@@ -43,6 +43,15 @@
 		function click_handler(e) {
 			select_purse((e.target.id.indexOf("purse_") !== 0 ? e.target.parentNode : e.target).id.replace("purse_", ""));
 		}
+
+		/**
+		 * If id is -1, all selections are cleared.
+		 * If no purse with given id is found, nothing happens.
+		 * If no previously is present, given purse is simply selected.
+		 * If there is previously selected purse, transfer is initiated, from that purse to a given purse.
+		 *    unless given purse matches matches previously selected, in that case it is simply deselected.
+		 * @param id 
+		 */
 		function select_purse(id) {
 			if (id == -1) {
 				if (_s(".purse.selected").length > 0) {
@@ -51,33 +60,34 @@
 				curr_transfer = {};
 				return;
 			}
-			if (_s("#purse_"+id).length == 0) {
+			if (!_id("purse_"+id)) {
 				return;
 			}
 			if (typeof curr_transfer.from == "undefined") {
 				curr_transfer.from = id;
-				_s("#purse_"+id)[0].classList.toggle("selected");
+				_id("purse_"+id).classList.toggle("selected");
 			}
 			else if (curr_transfer.from != id) {
 				mid_transfer(id);
 			}
 			else {
-				_s("#purse_"+id)[0].classList.toggle("selected");
+				_id("purse_"+id).classList.toggle("selected");
 				curr_transfer = {};
 			}
 		}
+
 		function mid_transfer(to_id) {
 			curr_transfer.to = +to_id;
 
-			_s("#from")[0].innerHTML = monies[curr_transfer.from].label;
-			_s("#to")[0].innerHTML = monies[curr_transfer.to].label;
+			_id("from").innerHTML = monies[curr_transfer.from].label;
+			_id("to").innerHTML = monies[curr_transfer.to].label;
 			var prev_inputs = _s("#previous span");
 			var i;
 			for (i = 0; i < prev_inputs.length; i++) {
 				prev_inputs[i].remove();
 			}
 
-			var prev_container = _s("#previous")[0];
+			var prev_container = _id("previous");
 			var spacer = _s("previous .spacer")[0];
 			var prevs = get_prevs();
 			console.log(prevs);
@@ -85,9 +95,9 @@
 				prev_container.insertBefore(_ce("span", {"class":"warning","data-letter":purse_letters[prevs.length - i]}, prevs[i],), prev_container.firstChild);
 			}
 			_ev(_s("#previous span"), "click", end_transfer);
-			_s("#transfer")[0].style.display = "block";
-			_s("#tamount")[0].focus();
-			_s("#tamount")[0].select();
+			_id("transfer").style.display = "block";
+			_id("tamount").focus();
+			_id("tamount").select();
 		}
 		function end_transfer(e) {
 			if (e.target && e.target.parentNode == _s('#previous')[0]) {
@@ -95,11 +105,11 @@
 				transfer(curr_transfer.from, curr_transfer.to, parts[0], parts[1], 0);
 			}
 			else {
-				transfer(curr_transfer.from, curr_transfer.to, _s("#tamount")[0].value, _s("#tamount_mul")[0].value, 0);
+				transfer(curr_transfer.from, curr_transfer.to, _id("tamount").value, _id("tamount_mul").value, 0);
 			}
-			_s("#transfer")[0].style.display = "none";
+			_id("transfer").style.display = "none";
 			update_purses([curr_transfer.from, curr_transfer.to]);
-			_s("#purse_"+curr_transfer.from)[0].classList.toggle("selected");
+			_id("purse_"+curr_transfer.from).classList.toggle("selected");
 			curr_transfer = {};
 		}
 		var last_mark_time;
@@ -131,7 +141,7 @@
 			ST.setItem(PRFX + "monies", JSON.stringify(monies));
 		}
 		function transfer_cancel() {
-			_s("#transfer")[0].style.display = "none";
+			_id("transfer").style.display = "none";
 			curr_transfer = {};
 			select_purse(-1);
 		}
@@ -202,8 +212,7 @@
 			ST.setItem(PRFX + "monies", JSON.stringify(monies));
 		}
 		function setup_display() {
-			_s("#setup")[0].style.display = "none";
-			var d = _s("#display")[0];
+			var d = _id("display");
 			var i = 1;
 			for (i in monies) {
 				let indicator = monies[i].color ? '<span class="indicator" style="background-color:'+monies[i].color+';"></span>' : "";
@@ -214,18 +223,14 @@
 			for (i = 0; i < purses.length; i++) {
 				_ev(purses[i], "drop", (function (el) { return function (e) { mid_transfer(e, el); }; })(purses[i]))
 			}
-			_s("#display")[0].style.display = "block";
-			_s("#log_display")[0].style.display = "block";
+			_id("display").style.display = "block";
+			_id("log_display").style.display = "block";
 		}
-		function setup_cancel() {
-			_s("#setup")[0].style.display = "none";
-			_s("#display")[0].style.display = "block";
-			_s("#log_display")[0].style.display = "block";
-		}
-		function setup_show() {
-			_s("#setup")[0].style.display = "block";
-			_s("#display")[0].style.display = "none";
-			_s("#log_display")[0].style.display = "none";
+		function setup_toggle() {
+			let hide_setup = _id("setup").style.display != "none";
+			_id("setup").style.display = hide_setup ? "none" : "block";
+			_id("display").style.display = hide_setup ? "block" : "none";
+			_id("log_display").style.display = hide_setup ? "block" : "none";
 		}
 		
 		function keyboard_handler(e) {
@@ -233,11 +238,9 @@
 			let purse_id = purse_letters.indexOf(e.key.toLowerCase());
 			let handled = false;
 
-			if (e.ctrlKey) {//avoid overiding browser binds
-			}
-			else if (_s('#setup')[0].style.display != "none") {
-			}
-			else if (typeof curr_transfer.to != "undefined") {
+			if (e.ctrlKey || _s('#setup')[0].style.display != "none") {
+			} //avoid overiding browser binds, and no binds for setup section
+			else if (typeof curr_transfer.to != "undefined") { //binds inside transfer dialog
 				let f_id = fx_reverse_map.indexOf(e.key);
 				if (e.key == "Escape") {
 					transfer_cancel();
@@ -250,17 +253,17 @@
 					}
 					handled = true;
 				}
-				else if (e.key == "Enter" && _s("#tamount")[0].value && _s("#tamount_mul")[0].value) {
+				else if (e.key == "Enter" && _id("tamount").value && _id("tamount_mul").value) {
 					end_transfer({});
 					handled = true;
 				}
-				else if (f_id > 0 && _s("#tamount")[0].value) {
-					_s("#tamount_mul")[0].value = f_id;
+				else if (f_id > 0 && _id("tamount").value) {
+					_id("tamount_mul").value = f_id;
 					end_transfer({});
 					handled = true;
 				}
 			}
-			else if (purse_id != -1 && typeof curr_transfer.to == "undefined") {
+			else if (purse_id != -1 && typeof curr_transfer.to == "undefined") {//binds for usual display
 				if (e.key.toLowerCase() != e.key) {
 					select_purse(-1);
 					select_purse(purse_id);
@@ -287,8 +290,7 @@
 			_ev(_s('#save'), 'click', save);
 			_ev(_s('#send'), 'click', end_transfer);
 			_ev(_s('#transfer_cancel'), 'click', transfer_cancel);
-			_ev(_s('#setup_cancel'), 'click', setup_cancel);
-			_ev(_s('#setup_icon'), 'click', setup_show);
+			_ev(_s('#setup_icon'), 'click', setup_toggle);
 
 			var existing_log = ST.getItem(PRFX + "log");
 			if (existing_log != null) {
@@ -313,20 +315,19 @@
 		});
 	</script>
 	<style type="text/css">
-		#setup_icon {width:32px;height:32px;position:absolute;top:5px;left:5px;border-radius:16px;border:3px green dashed;background-color:black;}
+		#setup_icon {width:32px;height:32px;position:absolute;top:5px;right:5px;border-radius:16px;border:3px green dashed;background-color:black;}
 		#setup_icon:before {width:22px;height:22px;position:absolute;top:-1px;left:-1px;border-radius:16px;background-color:black;border:3px green dashed;content:"";display:inline-block;}
 		* {box-sizing:border-box;}
 		html {width:100%;font-family:sans-serif;}
 		body {color:lightgray;background-color:black;width:100%;margin:0;}
-		/*#setup {display:none;}*/
 		#display, #setup {width:100%;}
 
 		#bank_row {margin:10px 3px;text-align:justify;}
 		label {display:inline-block;}
 		.breaker {display:inline-block;height:1px;width:50%;}
 		#bank_size {display:inline-block;margin-right:20px;}
-		#purse_info {width:100%;height:10em;}
-		#transfer_cancel, #setup_cancel {
+		#purse_info, #currency_info {width:100%;height:10em;}
+		#transfer_cancel {
 			margin-top:1px;
 			margin-right:4px;
 			display:inline-block;
@@ -345,7 +346,7 @@
 		.purse:before, #previous span:before {display:block;position:absolute;right:-0.7em;top:-0.7em;padding:0 4px 4px 4px;color:black;background:gainsboro;border:3px outset gainsboro;content:attr(data-letter);font:fixed;margin:0;margin-top:-3px;border-radius:5px;text-align:middle;}
 		#purse_0 {width:90%;margin:10px auto;max-width:90%;}
 		#purse_0:before {content:"         ";height:15px;}
-		.remove_purse:before, #transfer_cancel:before, #setup_cancel:before {content:"X";display:inline-block;}
+		.remove_purse:before, #transfer_cancel:before {content:"X";display:inline-block;}
 		.indicator {display:block;width:32px;height:32px;border-radius:16px;float:left;}
 		#save_container {text-align:center;margin-top:10px;}
 		#save {font-size:large;padding:3px 10px;}
@@ -381,9 +382,11 @@
 
 <body>
 	<div id="setup_icon"></div>
-	<div id="setup">
-		<div id="setup_cancel" class="warning"></div>
-		<div id="bank_row"><label for="bank_size">Bank size:</label> <input type="text" id="bank_size" value="999999"> <span class="breaker"></span></div>
+	<div id="setup" style="display:none;">
+		<div id="bank_row"><label for="bank_size">Bank size:</label> <input type="text" id="bank_size" value=""> <span class="breaker"></span></div>
+		<b>Currencies</b>, one per line. &lt;ammount in bank&gt;,&lt;abbreviation&gt;,&lt;name&gt;,&lt;html color&gt;<br>
+		<textarea id="currency_info"></textarea>
+		<b>Purse names</b>, one per line. Prepend "=&lt;html color&gt;" to purse name, to give a color indicator to that purse.<br>
 		<textarea id="purse_info"></textarea>
 		<div id="save_container">
 			<input type="button" id="save" value="Save &amp; Use" class="warning">
